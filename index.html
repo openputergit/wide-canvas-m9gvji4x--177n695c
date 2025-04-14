@@ -1,0 +1,2823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthCheck - Symptom Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f9ff;
+        }
+        .symptom-card:hover {
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        .chat-message {
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .chat-user {
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+        .chat-ai {
+            background-color: #f5f5f5;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #f44336;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .map-marker {
+            cursor: pointer;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="bi bi-heart-pulse text-blue-600 text-2xl"></i>
+                    <span class="ml-2 text-xl font-semibold text-gray-800">HealthCheck</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#home" class="text-gray-600 hover:text-blue-600">Home</a>
+                    <a href="#doctors" class="text-gray-600 hover:text-blue-600">Find Doctors</a>
+                    <a href="#chat" class="text-gray-600 hover:text-blue-600">AI Chat</a>
+                    <a href="#emergency" class="text-gray-600 hover:text-blue-600">Emergency</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="notificationBell" class="hidden relative cursor-pointer">
+                        <i class="bi bi-bell text-gray-600 text-xl"></i>
+                        <span id="notificationCount" class="notification-badge hidden">0</span>
+                    </div>
+                    <div id="userInfo" class="hidden items-center">
+                        <span id="userName" class="mr-2 text-blue-600"></span>
+                        <span id="userType" class="px-2 py-1 rounded text-xs mr-2"></span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="loginBtn" class="text-blue-600 hover:text-blue-800">Login</button>
+                        <button id="registerBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Register</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Notifications Panel -->
+    <div id="notificationsPanel" class="hidden fixed right-0 top-16 bg-white shadow-xl z-50 w-80 max-h-96 overflow-y-auto rounded-bl-lg">
+        <div class="p-4 border-b">
+            <h3 class="font-semibold">Notifications</h3>
+        </div>
+        <div id="notificationsList" class="p-2">
+            <p class="text-gray-500 text-center py-4">No notifications yet</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div id="mainContent">
+            <!-- Home Section -->
+            <section id="home" class="">
+                <div class="flex flex-col md:flex-row items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800 mb-4">Symptom Checker</h1>
+                        <p class="text-gray-600 max-w-xl mb-6">Identify potential health issues and connect with qualified doctors based on your symptoms.</p>
+                    </div>
+                    <div class="w-full md:w-1/3 bg-white p-4 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-2">Emergency SOS</h3>
+                        <p class="text-gray-600 mb-2">Need immediate medical attention?</p>
+                        <button id="sosBtn" class="w-full bg-red-600 text-white p-2 rounded hover:bg-red-700 flex items-center justify-center">
+                            <i class="bi bi-exclamation-triangle-fill mr-2"></i> Send SOS Alert
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Symptom Cards - will be populated via JavaScript -->
+                </div>
+            </section>
+
+            <!-- Doctors Section -->
+            <section id="doctors" class="hidden mt-12">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Find Doctors</h2>
+                
+                <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="w-full md:w-1/3">
+                            <label class="block text-gray-700 mb-2">Search by Symptom</label>
+                            <select id="symptomFilter" class="w-full p-2 border rounded">
+                                <option value="">Select a symptom</option>
+                                <!-- Options will be populated via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="w-full md:w-1/3">
+                            <label class="block text-gray-700 mb-2">Location</label>
+                            <input type="text" id="locationFilter" placeholder="Enter your location" class="w-full p-2 border rounded">
+                            <div class="mt-2 flex items-center">
+                                <button id="useMyLocation" class="text-blue-600 hover:text-blue-800 text-sm flex items-center">
+                                    <i class="bi bi-geo-alt mr-1"></i> Use my current location
+                                </button>
+                                <div id="locationLoader" class="loader ml-2 hidden"></div>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-1/3 flex items-end">
+                            <button id="findDoctorsBtn" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Find Doctors</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="doctorsMap" class="w-full h-64 bg-gray-200 rounded-lg mb-6 flex items-center justify-center relative">
+                    <span class="text-gray-600">Map loading... Please allow location access</span>
+                    <!-- Map will be populated dynamically -->
+                </div>
+                
+                <div id="doctorsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Doctor cards will be populated here -->
+                </div>
+            </section>
+
+            <!-- AI Chat Section -->
+            <section id="chat" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">AI Symptom Assessment</h2>
+                
+                <div class="bg-white rounded-lg shadow-md p-4 h-96 flex flex-col">
+                    <div id="chatMessages" class="flex-grow overflow-y-auto mb-4 p-2">
+                        <div class="chat-message chat-ai p-3 rounded-lg mb-2">
+                            Hello! I'm your AI health assistant. Please describe your symptoms and I'll help assess your condition.
+                        </div>
+                    </div>
+                    
+                    <div class="flex">
+                        <input type="text" id="chatInput" placeholder="Describe your symptoms..." class="flex-grow p-2 border rounded-l">
+                        <button id="sendChatBtn" class="bg-blue-600 text-white px-4 py-2 rounded-r hover:bg-blue-700">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex items-center justify-between">
+                    <div class="text-sm text-gray-500">
+                        <p><i class="bi bi-info-circle"></i> This is an AI-powered assistant and not a replacement for professional medical advice.</p>
+                    </div>
+                    <button id="clearChatBtn" class="text-sm text-blue-600 hover:text-blue-800">Clear Chat</button>
+                </div>
+            </section>
+
+            <!-- Dashboard Section (Patient) -->
+            <section id="patientDashboard" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Patient Dashboard</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Upcoming Appointments</h3>
+                            <span id="appointmentCount" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">0</span>
+                        </div>
+                        <div id="patientAppointments" class="space-y-3">
+                            <p class="text-gray-500 italic">No upcoming appointments</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Recent Symptoms</h3>
+                            <button id="logNewSymptom" class="text-blue-600 hover:text-blue-800 text-sm">+ Log New</button>
+                        </div>
+                        <div id="patientSymptoms" class="space-y-3">
+                            <p class="text-gray-500 italic">No recent symptoms logged</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Pending Requests</h3>
+                        <span id="pendingRequestsCount" class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">0</span>
+                    </div>
+                    <div id="patientPendingRequests" class="space-y-3">
+                        <p class="text-gray-500 italic">No pending requests</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Your Doctors</h3>
+                        <button id="findMoreDoctors" onclick="showSection('doctors')" class="text-blue-600 hover:text-blue-800 text-sm">Find More</button>
+                    </div>
+                    <div id="patientDoctors" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Will be populated via JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Section (Doctor) -->
+            <section id="doctorDashboard" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Doctor Dashboard</h2>
+                
+                <div class="flex flex-col md:flex-row justify-between mb-6">
+                    <div class="flex items-center mb-4 md:mb-0">
+                        <label class="mr-2">Availability Status:</label>
+                        <select id="doctorStatusSelect" class="p-2 border rounded mr-2">
+                            <option value="available">Available</option>
+                            <option value="busy">Busy</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                        <div id="statusIndicator" class="w-4 h-4 rounded-full bg-green-500"></div>
+                    </div>
+                    
+                    <div class="flex space-x-4">
+                        <button id="updateProfileBtn" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            Update Profile
+                        </button>
+                        <button id="setLocationBtn" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
+                            Set Location
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Today's Appointments</h3>
+                            <span id="doctorAppointmentCount" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">0</span>
+                        </div>
+                        <div id="doctorAppointments" class="space-y-3">
+                            <p class="text-gray-500 italic">No appointments for today</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Patient Requests</h3>
+                            <span id="patientRequestCount" class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">0</span>
+                        </div>
+                        <div id="patientRequests" class="space-y-3">
+                            <p class="text-gray-500 italic">No new patient requests</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Your Patients</h3>
+                        <div class="flex space-x-2">
+                            <input type="text" id="patientSearch" placeholder="Search patients..." class="p-1 border rounded text-sm">
+                            <select id="patientFilter" class="p-1 border rounded text-sm">
+                                <option value="all">All Patients</option>
+                                <option value="recent">Recent</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="doctorPatients" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Will be populated via JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Admin Dashboard -->
+            <section id="adminDashboard" class="hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">Admin Dashboard</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h3 class="font-semibold mb-1">Total Users</h3>
+                        <p class="text-2xl font-bold" id="totalUsers">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h3 class="font-semibold mb-1">Active Doctors</h3>
+                        <p class="text-2xl font-bold text-green-600" id="activeDoctors">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <h3 class="font-semibold mb-1">Emergency Alerts</h3>
+                        <p class="text-2xl font-bold text-red-600" id="emergencyAlerts">0</p>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <h3 class="text-xl font-semibold mb-4">System Management</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Manage Users</button>
+                        <button class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Manage Doctors</button>
+                        <button class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">System Settings</button>
+                        <button class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">View Reports</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Login Modal -->
+        <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Login</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">User Type</label>
+                    <select id="loginUserType" class="w-full p-2 border rounded">
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <input type="email" id="loginEmail" placeholder="Email" class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="loginPassword" placeholder="Password" class="w-full p-2 mb-4 border rounded">
+                <button onclick="login()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Login</button>
+                <button onclick="closeModal('loginModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Register Modal -->
+        <div id="registerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Register</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Register as</label>
+                    <select id="regUserType" class="w-full p-2 border rounded">
+                        <option value="patient">Patient</option>
+                        <option value="doctor">Doctor</option>
+                    </select>
+                </div>
+                <input type="text" id="regName" placeholder="Full Name" class="w-full p-2 mb-4 border rounded">
+                <input type="email" id="regEmail" placeholder="Email" class="w-full p-2 mb-4 border rounded">
+                <input type="password" id="regPassword" placeholder="Password" class="w-full p-2 mb-4 border rounded">
+                <input type="text" id="regLocation" placeholder="Your Location (City, Area)" class="w-full p-2 mb-4 border rounded">
+                
+                <div id="doctorFields" class="hidden">
+                    <input type="text" id="regSpecialty" placeholder="Medical Specialty" class="w-full p-2 mb-4 border rounded">
+                    <input type="text" id="regLicenseNo" placeholder="License Number" class="w-full p-2 mb-4 border rounded">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2">Specializations</label>
+                        <div id="specializationsCheckboxes" class="grid grid-cols-2 gap-2">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="register()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Register</button>
+                <button onclick="closeModal('registerModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Appointment Booking Modal -->
+        <div id="appointmentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Book Appointment</h2>
+                <p id="appointmentDoctorName" class="mb-4 text-lg font-medium"></p>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Select Date</label>
+                    <input type="date" id="appointmentDate" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Select Time</label>
+                    <select id="appointmentTime" class="w-full p-2 border rounded">
+                        <option value="9:00 AM">9:00 AM</option>
+                        <option value="10:00 AM">10:00 AM</option>
+                        <option value="11:00 AM">11:00 AM</option>
+                        <option value="1:00 PM">1:00 PM</option>
+                        <option value="2:00 PM">2:00 PM</option>
+                        <option value="3:00 PM">3:00 PM</option>
+                        <option value="4:00 PM">4:00 PM</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Appointment Type</label>
+                    <select id="appointmentType" class="w-full p-2 border rounded">
+                        <option value="in-person">In-person</option>
+                        <option value="telemedicine">Telemedicine</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Reason</label>
+                    <textarea id="appointmentReason" class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+                
+                <button onclick="bookAppointment()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 flex items-center justify-center">
+                    <span>Book Now</span>
+                    <div id="appointmentLoader" class="loader ml-2 hidden"></div>
+                </button>
+                <button onclick="closeModal('appointmentModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Feedback Modal -->
+        <div id="feedbackModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Rate & Review</h2>
+                <p id="feedbackDoctorName" class="mb-2 font-medium"></p>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Rating</label>
+                    <div class="flex">
+                        <i class="bi bi-star text-2xl cursor-pointer text-gray-400 hover:text-yellow-400" data-rating="1"></i>
+                        <i class="bi bi-star text-2xl cursor-pointer text-gray-400 hover:text-yellow-400" data-rating="2"></i>
+                        <i class="bi bi-star text-2xl cursor-pointer text-gray-400 hover:text-yellow-400" data-rating="3"></i>
+                        <i class="bi bi-star text-2xl cursor-pointer text-gray-400 hover:text-yellow-400" data-rating="4"></i>
+                        <i class="bi bi-star text-2xl cursor-pointer text-gray-400 hover:text-yellow-400" data-rating="5"></i>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Your Review</label>
+                    <textarea id="feedbackText" class="w-full p-2 border rounded" rows="4"></textarea>
+                </div>
+                
+                <button onclick="submitFeedback()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Submit Feedback</button>
+                <button onclick="closeModal('feedbackModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Emergency Modal -->
+        <div id="emergencyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md border-4 border-red-600">
+                <h2 class="text-2xl font-bold mb-4 text-red-600">Emergency SOS</h2>
+                <p class="mb-4">Your emergency alert is being processed. Nearby medical facilities are being notified.</p>
+                
+                <div class="w-full h-6 bg-gray-200 rounded overflow-hidden mb-4">
+                    <div id="emergencyProgressBar" class="h-6 bg-red-600" style="width: 0%"></div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Add details about your emergency (optional)</label>
+                    <textarea id="emergencyDetails" class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="sendEmergencyDetails()" class="flex-1 bg-red-600 text-white p-2 rounded hover:bg-red-700">Send Details</button>
+                    <button onclick="closeModal('emergencyModal')" class="flex-1 bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Profile Modal -->
+        <div id="doctorProfileModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Update Profile</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Specialty</label>
+                    <input type="text" id="updateSpecialty" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Hospital/Clinic</label>
+                    <input type="text" id="updateLocation" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Address</label>
+                    <input type="text" id="updateAddress" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Bio</label>
+                    <textarea id="updateBio" class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Specializations</label>
+                    <div id="updateSpecializations" class="grid grid-cols-2 gap-2">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <button onclick="updateDoctorProfile()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Save Changes</button>
+                <button onclick="closeModal('doctorProfileModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Location Modal -->
+        <div id="locationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Set Your Location</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">City</label>
+                    <input type="text" id="locationCity" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Area/Locality</label>
+                    <input type="text" id="locationArea" class="w-full p-2 border rounded">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Pin Code</label>
+                    <input type="text" id="locationPinCode" class="w-full p-2 border rounded">
+                </div>
+                
+                <button class="w-full mb-4 bg-gray-100 text-gray-800 p-2 rounded hover:bg-gray-200 flex items-center justify-center" id="detectLocation">
+                    <i class="bi bi-geo-alt mr-2"></i> 
+                    Detect My Location
+                    <div id="detectLocationLoader" class="loader ml-2 hidden"></div>
+                </button>
+                
+                <button onclick="saveLocation()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Save Location</button>
+                <button onclick="closeModal('locationModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Communication Modal -->
+        <div id="communicationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Contact Doctor</h2>
+                <p id="communicationDoctorName" class="mb-4 text-lg font-medium"></p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <button id="startVideoCall" class="bg-blue-600 text-white p-3 rounded hover:bg-blue-700 flex items-center justify-center">
+                        <i class="bi bi-camera-video mr-2"></i> Video Call
+                    </button>
+                    <button id="startWhatsApp" class="bg-green-600 text-white p-3 rounded hover:bg-green-700 flex items-center justify-center">
+                        <i class="bi bi-whatsapp mr-2"></i> WhatsApp
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Send a message</label>
+                    <textarea id="communicationMessage" class="w-full p-2 border rounded" rows="3" placeholder="Type your message here..."></textarea>
+                </div>
+                
+                <button id="sendMessageBtn" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Send Message</button>
+                <button onclick="closeModal('communicationModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Close</button>
+            </div>
+        </div>
+        
+        <!-- Video Call Modal -->
+        <div id="videoCallModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col">
+            <div class="bg-gray-900 text-white p-4 flex justify-between items-center">
+                <h3 id="videoCallTitle" class="text-lg font-semibold">Video Call with Dr. Name</h3>
+                <div class="flex space-x-4">
+                    <button id="toggleMuteBtn" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600">
+                        <i class="bi bi-mic"></i>
+                    </button>
+                    <button id="toggleVideoBtn" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600">
+                        <i class="bi bi-camera-video"></i>
+                    </button>
+                    <button id="endCallBtn" class="p-2 rounded-full bg-red-600 hover:bg-red-700">
+                        <i class="bi bi-telephone-x"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex-grow flex items-center justify-center p-4">
+                <div class="relative w-full max-w-4xl h-full max-h-[70vh] bg-gray-800 rounded-lg flex items-center justify-center">
+                    <div class="text-white text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-camera-video-off text-4xl"></i>
+                        </div>
+                        <p>Video call connecting...</p>
+                        <p class="text-sm text-gray-400 mt-2">This is a simulated call interface</p>
+                    </div>
+                    
+                    <!-- Small self-view -->
+                    <div class="absolute bottom-4 right-4 w-32 h-24 bg-gray-700 rounded border border-gray-600 flex items-center justify-center">
+                        <i class="bi bi-person text-3xl text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Symptom Modal -->
+        <div id="logSymptomModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="login-container p-8 rounded-lg w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6">Log New Symptom</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Select Symptom</label>
+                    <select id="newSymptomSelect" class="w-full p-2 border rounded">
+                        <option value="">Select a symptom</option>
+                        <!-- Will be populated via JavaScript -->
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Duration</label>
+                    <select id="symptomDuration" class="w-full p-2 border rounded">
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="weeks">Weeks</option>
+                        <option value="months">Months</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Severity</label>
+                    <div class="flex space-x-1">
+                        <button class="flex-1 p-2 border rounded symptom-severity-btn" data-severity="1">Mild</button>
+                        <button class="flex-1 p-2 border rounded symptom-severity-btn" data-severity="2">Moderate</button>
+                        <button class="flex-1 p-2 border rounded symptom-severity-btn" data-severity="3">Severe</button>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Notes</label>
+                    <textarea id="symptomNotes" class="w-full p-2 border rounded" rows="3"></textarea>
+                </div>
+                
+                <button onclick="logNewSymptom()" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Save Symptom</button>
+                <button onclick="closeModal('logSymptomModal')" class="w-full mt-2 text-gray-600 hover:text-gray-800">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Symptom data
+    const symptoms = [
+        { id: 1, name: 'Headache', icon: 'bi-emoji-dizzy', description: 'Pain in any region of the head' },
+        { id: 2, name: 'Fever', icon: 'bi-thermometer-high', description: 'Elevated body temperature' },
+        { id: 3, name: 'Cough', icon: 'bi-lungs', description: 'Sudden expulsion of air' },
+        { id: 4, name: 'Fatigue', icon: 'bi-battery-half', description: 'Extreme tiredness' },
+        { id: 5, name: 'Nausea', icon: 'bi-emoji-dizzy', description: 'Feeling of sickness with an inclination to vomit' },
+        { id: 6, name: 'Body Ache', icon: 'bi-person-x', description: 'General muscle pain or soreness' },
+        { id: 7, name: 'Shortness of Breath', icon: 'bi-wind', description: 'Difficulty breathing or breathlessness' },
+        { id: 8, name: 'Chest Pain', icon: 'bi-heart', description: 'Pain or discomfort in the chest' },
+        { id: 9, name: 'Dizziness', icon: 'bi-arrow-clockwise', description: 'Feeling of lightheadedness or vertigo' }
+    ];
+
+    // Mock location data for doctors
+    const locations = {
+        "Downtown Medical Center": { lat: 40.7128, lng: -74.0060 },
+        "Heart Care Institute": { lat: 40.7200, lng: -74.0100 },
+        "Neuro Health Center": { lat: 40.7180, lng: -74.0200 },
+        "Digestive Health Clinic": { lat: 40.7150, lng: -73.9950 },
+    };
+
+    // Doctor data
+    const doctors = [
+        { 
+            id: 1, 
+            name: 'Dr. Sarah Johnson', 
+            specialty: 'General Medicine',
+            email: 'doctor@example.com',
+            password: 'password', 
+            licenseNo: 'MD12345',
+            location: 'Downtown Medical Center',
+            address: '123 Main St, Central City',
+            availability: 'available',
+            rating: 4.8,
+            reviews: 127,
+            bio: 'Experienced general physician with over 10 years of practice.',
+            image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=200&auto=format&fit=crop',
+            specializations: ['Headache', 'Fever', 'Cough', 'General Health'],
+            coordinates: { lat: 40.7128, lng: -74.0060 },
+            city: 'Central City',
+            area: 'Downtown',
+            pinCode: '10001'
+        },
+        { 
+            id: 2, 
+            name: 'Dr. Michael Chen', 
+            specialty: 'Cardiology',
+            email: 'doctor2@example.com',
+            password: 'password', 
+            licenseNo: 'MD67890',
+            location: 'Heart Care Institute',
+            address: '456 Oak Ave, Central City',
+            availability: 'busy',
+            rating: 4.9,
+            reviews: 203,
+            bio: 'Specialized in heart conditions with advanced training in cardiac procedures.',
+            image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=200&auto=format&fit=crop',
+            specializations: ['Chest Pain', 'Shortness of Breath', 'Heart Conditions'],
+            coordinates: { lat: 40.7200, lng: -74.0100 },
+            city: 'Central City',
+            area: 'Midtown',
+            pinCode: '10002'
+        },
+        { 
+            id: 3, 
+            name: 'Dr. Emily Rodriguez', 
+            specialty: 'Neurology',
+            email: 'doctor3@example.com',
+            password: 'password', 
+            licenseNo: 'MD54321',
+            location: 'Neuro Health Center',
+            address: '789 Pine Rd, Central City',
+            availability: 'available',
+            rating: 4.7,
+            reviews: 156,
+            bio: 'Neurologist focused on headaches and brain-related disorders.',
+            image: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=200&auto=format&fit=crop',
+            specializations: ['Headache', 'Dizziness', 'Neurological Issues'],
+            coordinates: { lat: 40.7180, lng: -74.0200 },
+            city: 'Central City',
+            area: 'East Side',
+            pinCode: '10003'
+        },
+        { 
+            id: 4, 
+            name: 'Dr. Robert Wilson', 
+            specialty: 'Gastroenterology',
+            email: 'doctor4@example.com',
+            password: 'password', 
+            licenseNo: 'MD97531',
+            location: 'Digestive Health Clinic',
+            address: '321 Elm St, Central City',
+            availability: 'offline',
+            rating: 4.6,
+            reviews: 142,
+            bio: 'Expert in digestive system disorders and treatments.',
+            image: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=200&auto=format&fit=crop',
+            specializations: ['Nausea', 'Digestive Issues'],
+            coordinates: { lat: 40.7150, lng: -73.9950 },
+            city: 'Central City',
+            area: 'West Side',
+            pinCode: '10004'
+        },
+    ];
+
+    // User data storage
+    let users = [
+        {
+            id: 1,
+            name: 'John Smith',
+            email: 'patient@example.com',
+            password: 'password',
+            type: 'patient',
+            location: 'Central City, Downtown',
+            coordinates: { lat: 40.7130, lng: -74.0070 },
+            appointments: [],
+            symptoms: [],
+            pendingRequests: []
+        },
+        {
+            id: 2,
+            name: 'Admin User',
+            email: 'admin@example.com',
+            password: 'admin123',
+            type: 'admin'
+        }
+    ];
+
+    // Add doctors to users array
+    doctors.forEach(doctor => {
+        users.push({
+            id: doctor.id + 100,
+            name: doctor.name,
+            email: doctor.email,
+            password: doctor.password,
+            type: 'doctor',
+            specialty: doctor.specialty,
+            licenseNo: doctor.licenseNo,
+            location: doctor.location,
+            address: doctor.address,
+            availability: doctor.availability,
+            bio: doctor.bio,
+            city: doctor.city,
+            area: doctor.area,
+            pinCode: doctor.pinCode,
+            coordinates: doctor.coordinates,
+            appointments: [],
+            pendingRequests: [],
+            patients: []
+        });
+    });
+
+    let currentUser = null;
+    let currentDoctorId = null;
+    let selectedRating = 0;
+    let selectedSymptoms = [];
+    let selectedSymptomSeverity = 0;
+    let userCoordinates = null;
+    let notifications = [];
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeSymptoms();
+        initializeNavigation();
+        populateSymptomFilter();
+        populateNewSymptomSelect();
+        initializeSpecializationsCheckboxes();
+        
+        // Set up event listeners
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            if (currentUser) {
+                logout();
+            } else {
+                document.getElementById('loginModal').classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            document.getElementById('registerModal').classList.remove('hidden');
+        });
+
+        document.getElementById('regUserType').addEventListener('change', function() {
+            if (this.value === 'doctor') {
+                document.getElementById('doctorFields').classList.remove('hidden');
+            } else {
+                document.getElementById('doctorFields').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('sosBtn').addEventListener('click', showEmergencyModal);
+        document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
+        document.getElementById('clearChatBtn').addEventListener('click', clearChat);
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+
+        document.getElementById('doctorStatusSelect').addEventListener('change', function() {
+            updateDoctorStatus(this.value);
+        });
+
+        document.getElementById('findDoctorsBtn').addEventListener('click', findDoctors);
+        document.getElementById('useMyLocation').addEventListener('click', getUserLocation);
+        document.getElementById('detectLocation').addEventListener('click', detectLocation);
+        document.getElementById('updateProfileBtn').addEventListener('click', showProfileModal);
+        document.getElementById('setLocationBtn').addEventListener('click', showLocationModal);
+        document.getElementById('logNewSymptom').addEventListener('click', showLogSymptomModal);
+        
+        document.getElementById('notificationBell').addEventListener('click', toggleNotificationsPanel);
+        
+        document.getElementById('endCallBtn').addEventListener('click', endVideoCall);
+        document.getElementById('toggleMuteBtn').addEventListener('click', toggleMute);
+        document.getElementById('toggleVideoBtn').addEventListener('click', toggleVideo);
+
+        // Set up star rating system
+        const stars = document.querySelectorAll('.bi-star');
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = parseInt(this.getAttribute('data-rating'));
+                selectedRating = rating;
+                stars.forEach((s, i) => {
+                    s.classList.remove('bi-star-fill', 'bi-star');
+                    s.classList.add(i < rating ? 'bi-star-fill' : 'bi-star');
+                    s.classList.toggle('text-yellow-400', i < rating);
+                    s.classList.toggle('text-gray-400', i >= rating);
+                });
+            });
+        });
+
+        // Set up symptom severity buttons
+        const severityButtons = document.querySelectorAll('.symptom-severity-btn');
+        severityButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const severity = parseInt(this.getAttribute('data-severity'));
+                selectedSymptomSeverity = severity;
+                severityButtons.forEach((btn, i) => {
+                    btn.classList.remove('bg-blue-100', 'border-blue-600', 'text-blue-800');
+                    if (i + 1 === severity) {
+                        btn.classList.add('bg-blue-100', 'border-blue-600', 'text-blue-800');
+                    }
+                });
+            });
+        });
+
+        // Communication buttons
+        document.getElementById('startVideoCall').addEventListener('click', startVideoCall);
+        document.getElementById('startWhatsApp').addEventListener('click', startWhatsApp);
+        document.getElementById('sendMessageBtn').addEventListener('click', sendDirectMessage);
+    });
+
+    // Initialize symptoms
+    function initializeSymptoms() {
+        const symptomsContainer = document.querySelector('.grid');
+        symptomsContainer.innerHTML = symptoms.map(symptom => `
+            <div class="symptom-card bg-white p-6 rounded-lg shadow-md hover:shadow-lg cursor-pointer" data-id="${symptom.id}">
+                <i class="bi ${symptom.icon} text-3xl text-blue-600"></i>
+                <h3 class="text-xl font-semibold mt-4">${symptom.name}</h3>
+                <p class="text-gray-600 mt-2">${symptom.description}</p>
+                <button onclick="checkSymptom(${symptom.id})" class="mt-4 text-blue-600 hover:text-blue-800">Check Details</button>
+            </div>
+        `).join('');
+
+        // Add click event to all symptom cards
+        document.querySelectorAll('.symptom-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const id = parseInt(this.getAttribute('data-id'));
+                checkSymptom(id);
+            });
+        });
+    }
+
+    // Initialize navigation
+    function initializeNavigation() {
+        const navLinks = document.querySelectorAll('a[href^="#"]');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const sectionId = this.getAttribute('href').substring(1);
+                showSection(sectionId);
+            });
+        });
+    }
+
+    // Populate symptom filter dropdown
+    function populateSymptomFilter() {
+        const symptomFilter = document.getElementById('symptomFilter');
+        symptoms.forEach(symptom => {
+            const option = document.createElement('option');
+            option.value = symptom.id;
+            option.textContent = symptom.name;
+            symptomFilter.appendChild(option);
+        });
+    }
+
+    // Populate new symptom select dropdown
+    function populateNewSymptomSelect() {
+        const symptomSelect = document.getElementById('newSymptomSelect');
+        symptoms.forEach(symptom => {
+            const option = document.createElement('option');
+            option.value = symptom.id;
+            option.textContent = symptom.name;
+            symptomSelect.appendChild(option);
+        });
+    }
+
+    // Initialize specializations checkboxes
+    function initializeSpecializationsCheckboxes() {
+        const container = document.getElementById('specializationsCheckboxes');
+        container.innerHTML = symptoms.map(symptom => `
+            <div class="flex items-center">
+                <input type="checkbox" id="spec${symptom.id}" value="${symptom.name}" class="mr-2 specialization-checkbox">
+                <label for="spec${symptom.id}" class="text-sm">${symptom.name}</label>
+            </div>
+        `).join('');
+
+        // Also initialize the update specializations in doctor profile modal
+        const updateContainer = document.getElementById('updateSpecializations');
+        updateContainer.innerHTML = symptoms.map(symptom => `
+            <div class="flex items-center">
+                <input type="checkbox" id="updateSpec${symptom.id}" value="${symptom.name}" class="mr-2 update-specialization-checkbox">
+                <label for="updateSpec${symptom.id}" class="text-sm">${symptom.name}</label>
+            </div>
+        `).join('');
+    }
+
+    // Show specified section
+    function showSection(sectionId) {
+        const sections = document.querySelectorAll('section');
+        sections.forEach(section => {
+            section.classList.add('hidden');
+        });
+
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) {
+            targetSection.classList.remove('hidden');
+        }
+
+        // Special handling for certain sections
+        if (sectionId === 'doctors' && !currentUser) {
+            alert('Please login to access the doctor finder.');
+            showSection('home');
+            document.getElementById('loginModal').classList.remove('hidden');
+            return;
+        }
+
+        if (sectionId === 'chat' && !currentUser) {
+            alert('Please login to use the AI chat service.');
+            showSection('home');
+            document.getElementById('loginModal').classList.remove('hidden');
+            return;
+        }
+    }
+
+    // Modal handlers
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+    }
+
+    // Toggle notifications panel
+    function toggleNotificationsPanel() {
+        const panel = document.getElementById('notificationsPanel');
+        panel.classList.toggle('hidden');
+    }
+
+    // Authentication functions
+    function login() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const userType = document.getElementById('loginUserType').value;
+        
+        const user = users.find(u => u.email === email && u.password === password && u.type === userType);
+        if (user) {
+            currentUser = user;
+            alert('Login successful!');
+            closeModal('loginModal');
+            updateUI();
+        } else {
+            alert('Invalid credentials or user type!');
+        }
+    }
+
+    function register() {
+        const userType = document.getElementById('regUserType').value;
+        const name = document.getElementById('regName').value;
+        const email = document.getElementById('regEmail').value;
+        const password = document.getElementById('regPassword').value;
+        const location = document.getElementById('regLocation').value;
+
+        if (!name || !email || !password || !location) {
+            alert('Please fill all required fields!');
+            return;
+        }
+
+        if (users.some(u => u.email === email)) {
+            alert('Email already registered!');
+            return;
+        }
+
+        const newUser = {
+            id: users.length + 1,
+            name,
+            email,
+            password,
+            type: userType,
+            location,
+            coordinates: generateRandomCoordinates(),
+            appointments: [],
+            symptoms: [],
+            pendingRequests: []
+        };
+
+        if (userType === 'doctor') {
+            const specialty = document.getElementById('regSpecialty').value;
+            const licenseNo = document.getElementById('regLicenseNo').value;
+            
+            if (!specialty || !licenseNo) {
+                alert('Please fill all doctor-specific fields!');
+                return;
+            }
+            
+            // Get selected specializations
+            const specializationCheckboxes = document.querySelectorAll('.specialization-checkbox:checked');
+            const specializations = Array.from(specializationCheckboxes).map(cb => cb.value);
+            
+            if (specializations.length === 0) {
+                alert('Please select at least one specialization!');
+                return;
+            }
+            
+            newUser.specialty = specialty;
+            newUser.licenseNo = licenseNo;
+            newUser.availability = 'available';
+            newUser.rating = 0;
+            newUser.reviews = 0;
+            newUser.patients = [];
+            
+            // Parse location into city, area, pinCode
+            const locationParts = location.split(',').map(part => part.trim());
+            newUser.city = locationParts[0] || 'Unknown';
+            newUser.area = locationParts[1] || 'Unknown';
+            newUser.pinCode = '10000'; // Default pin code
+            
+            // Add to doctors array
+            doctors.push({
+                id: doctors.length + 1,
+                name,
+                email,
+                password,
+                specialty,
+                licenseNo,
+                location: name + "'s Clinic",
+                address: location,
+                availability: 'available',
+                rating: 0,
+                reviews: 0,
+                bio: `${specialty} specialist accepting new patients.`,
+                image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=200&auto=format&fit=crop',
+                specializations,
+                coordinates: newUser.coordinates,
+                city: newUser.city,
+                area: newUser.area,
+                pinCode: newUser.pinCode
+            });
+        }
+
+        users.push(newUser);
+        alert('Registration successful! Please login.');
+        closeModal('registerModal');
+    }
+
+    // Generate random coordinates near New York for demo purposes
+    function generateRandomCoordinates() {
+        // Random coordinates around New York City
+        const lat = 40.7128 + (Math.random() * 0.02 - 0.01);
+        const lng = -74.0060 + (Math.random() * 0.02 - 0.01);
+        return { lat, lng };
+    }
+
+    // Update UI based on login status
+    function updateUI() {
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const userInfo = document.getElementById('userInfo');
+        const userName = document.getElementById('userName');
+        const userType = document.getElementById('userType');
+        const notificationBell = document.getElementById('notificationBell');
+        
+        if (currentUser) {
+            loginBtn.textContent = 'Logout';
+            registerBtn.classList.add('hidden');
+            userInfo.classList.remove('hidden');
+            userInfo.classList.add('flex');
+            userName.textContent = currentUser.name;
+            notificationBell.classList.remove('hidden');
+            
+            userType.textContent = currentUser.type.charAt(0).toUpperCase() + currentUser.type.slice(1);
+            if (currentUser.type === 'patient') {
+                userType.classList.add('bg-blue-100', 'text-blue-800');
+            } else if (currentUser.type === 'doctor') {
+                userType.classList.add('bg-green-100', 'text-green-800');
+            } else {
+                userType.classList.add('bg-purple-100', 'text-purple-800');
+            }
+            
+            // Reset notifications
+            notifications = [];
+            updateNotificationCount();
+            
+            // Show the appropriate dashboard based on user type
+            if (currentUser.type === 'patient') {
+                showSection('patientDashboard');
+                populatePatientDashboard();
+            } else if (currentUser.type === 'doctor') {
+                showSection('doctorDashboard');
+                populateDoctorDashboard();
+            } else if (currentUser.type === 'admin') {
+                showSection('adminDashboard');
+                populateAdminDashboard();
+            }
+        } else {
+            loginBtn.textContent = 'Login';
+            registerBtn.classList.remove('hidden');
+            userInfo.classList.add('hidden');
+            userInfo.classList.remove('flex');
+            notificationBell.classList.add('hidden');
+            showSection('home');
+        }
+    }
+
+    function logout() {
+        currentUser = null;
+        selectedSymptoms = [];
+        updateUI();
+        alert('Logged out successfully!');
+    }
+
+    // Symptom checking
+    function checkSymptom(symptomId) {
+        const symptom = symptoms.find(s => s.id === symptomId);
+        
+        if (!currentUser) {
+            alert('Please login to check symptom details!');
+            document.getElementById('loginModal').classList.remove('hidden');
+            return;
+        }
+        
+        if (currentUser.type === 'patient') {
+            // Add to patient's symptoms if not already there
+            if (!currentUser.symptoms) {
+                currentUser.symptoms = [];
+            }
+            
+            if (!currentUser.symptoms.some(s => s.id === symptomId)) {
+                currentUser.symptoms.push({
+                    id: symptomId,
+                    name: symptom.name,
+                    severity: Math.floor(Math.random() * 3) + 1, // Random severity for demo
+                    duration: ['hours', 'days', 'weeks'][Math.floor(Math.random() * 3)], // Random duration for demo
+                    notes: '',
+                    checkedAt: new Date().toISOString()
+                });
+                
+                // Add notification
+                addNotification(`You logged the symptom: ${symptom.name}`);
+            }
+            
+            // Offer to find doctors for this symptom
+            if (confirm(`You selected: ${symptom.name}\n\nWould you like to find doctors who can help with this symptom?`)) {
+                selectedSymptoms = [symptomId];
+                showSection('doctors');
+                document.getElementById('symptomFilter').value = symptomId;
+                findDoctors();
+            }
+        } else if (currentUser.type === 'doctor') {
+            alert(`Symptom: ${symptom.name}\n\nAs a doctor, you can view symptom information but cannot report symptoms for yourself. Please refer to medical literature for detailed information.`);
+        } else {
+            alert(`Symptom: ${symptom.name}\n\nAs an admin, you're viewing the system from an administrative perspective.`);
+        }
+    }
+
+    // Socket alternative for real-time notifications
+    function addNotification(message, isUrgent = false) {
+        const notification = {
+            id: Date.now(),
+            message,
+            isUrgent,
+            timestamp: new Date().toISOString(),
+            read: false
+        };
+        
+        notifications.push(notification);
+        updateNotificationCount();
+        updateNotificationsList();
+    }
+
+    function updateNotificationCount() {
+        const count = notifications.filter(n => !n.read).length;
+        const countElement = document.getElementById('notificationCount');
+        
+        if (count > 0) {
+            countElement.textContent = count;
+            countElement.classList.remove('hidden');
+        } else {
+            countElement.classList.add('hidden');
+        }
+    }
+
+    function updateNotificationsList() {
+        const container = document.getElementById('notificationsList');
+        
+        if (notifications.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No notifications yet</p>';
+            return;
+        }
+        
+        container.innerHTML = notifications.map(notification => `
+            <div class="p-3 ${notification.read ? 'bg-white' : 'bg-blue-50'} border-b border-gray-200 last:border-b-0">
+                <div class="flex justify-between items-start">
+                    <div class="${notification.isUrgent ? 'text-red-600 font-medium' : 'text-gray-800'}">
+                        ${notification.message}
+                    </div>
+                    ${!notification.read ? `<button onclick="markNotificationRead(${notification.id})" class="text-xs text-blue-600">Mark Read</button>` : ''}
+                </div>
+                <p class="text-xs text-gray-500 mt-1">${formatTimestamp(notification.timestamp)}</p>
+            </div>
+        `).join('');
+    }
+
+    function markNotificationRead(id) {
+        const notification = notifications.find(n => n.id === id);
+        if (notification) {
+            notification.read = true;
+            updateNotificationCount();
+            updateNotificationsList();
+        }
+    }
+
+    function formatTimestamp(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Chat functionality
+    function sendChatMessage() {
+        const chatInput = document.getElementById('chatInput');
+        const userMessage = chatInput.value.trim();
+        
+        if (!userMessage) return;
+        
+        // Add user message to chat
+        addChatMessage(userMessage, 'user');
+        chatInput.value = '';
+        
+        // Simulate AI thinking with loader
+        const chatMessages = document.getElementById('chatMessages');
+        const loaderElement = document.createElement('div');
+        loaderElement.classList.add('chat-message', 'chat-ai', 'p-3', 'rounded-lg', 'mb-2', 'flex', 'items-center');
+        loaderElement.innerHTML = '<div class="loader mr-2"></div><span>Analyzing your symptoms...</span>';
+        chatMessages.appendChild(loaderElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Simulate AI response after a short delay
+        setTimeout(() => {
+            // Remove loader
+            chatMessages.removeChild(loaderElement);
+            
+            const response = generateAIResponse(userMessage);
+            addChatMessage(response, 'ai');
+            
+            // Check if symptoms mentioned and suggest doctors
+            checkForSymptoms(userMessage);
+        }, 1500);
+    }
+
+    function addChatMessage(message, sender) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chat-message', sender === 'user' ? 'chat-user' : 'chat-ai', 'p-3', 'rounded-lg', 'mb-2');
+        messageElement.textContent = message;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function clearChat() {
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML = `
+            <div class="chat-message chat-ai p-3 rounded-lg mb-2">
+                Hello! I'm your AI health assistant. Please describe your symptoms and I'll help assess your condition.
+            </div>
+        `;
+    }
+
+    function generateAIResponse(userMessage) {
+        // Simple AI response generation based on user message
+        userMessage = userMessage.toLowerCase();
+        
+        if (userMessage.includes('hello') || userMessage.includes('hi ')) {
+            return "Hello! How can I help you with your health concerns today?";
+        } else if (userMessage.includes('headache') || userMessage.includes('head pain')) {
+            return "I'm sorry you're experiencing a headache. This could be due to stress, dehydration, or other factors. How long have you been experiencing this? Is it accompanied by any other symptoms?";
+        } else if (userMessage.includes('fever') || userMessage.includes('temperature')) {
+            return "A fever is often a sign your body is fighting an infection. It's important to stay hydrated. What's your current temperature? Any other symptoms?";
+        } else if (userMessage.includes('cough')) {
+            return "Coughs can be caused by various factors including allergies, infections, or irritants. Is your cough dry or productive (producing phlegm)? How long have you had it?";
+        } else if (userMessage.includes('tired') || userMessage.includes('fatigue')) {
+            return "Fatigue can be caused by various factors including lack of sleep, stress, or medical conditions. Have you noticed any changes in your sleep pattern or daily routine?";
+        } else if (userMessage.includes('thank')) {
+            return "You're welcome! Is there anything else I can help you with?";
+        } else if (userMessage.includes('chest pain')) {
+            return "Chest pain can be concerning and could be related to heart issues, muscle strain, or other causes. Where exactly is the pain located? Does it radiate to other areas? If your chest pain is severe, accompanied by shortness of breath, or spreading to your arms, back, or jaw, please seek emergency medical help immediately.";
+        } else if (userMessage.includes('dizzy') || userMessage.includes('dizziness')) {
+            return "Dizziness can be caused by many factors including inner ear problems, low blood pressure, dehydration, or medication side effects. Are you also experiencing nausea or loss of balance? Have you made any sudden movements or stood up quickly before feeling dizzy?";
+        } else if (userMessage.includes('nause') || userMessage.includes('vomit')) {
+            return "I'm sorry to hear you're experiencing nausea. This could be due to various causes including food poisoning, migraines, medication side effects, or viral infections. Have you vomited? Are you able to keep fluids down? When did this start?";
+        } else {
+            return "I understand you're experiencing some health concerns. Can you provide more details about your symptoms, such as when they started and if there are any other symptoms?";
+        }
+    }
+
+    function checkForSymptoms(message) {
+        const lowerMessage = message.toLowerCase();
+        const detectedSymptoms = [];
+        
+        symptoms.forEach(symptom => {
+            if (lowerMessage.includes(symptom.name.toLowerCase())) {
+                detectedSymptoms.push(symptom);
+            }
+        });
+        
+        if (detectedSymptoms.length > 0) {
+            setTimeout(() => {
+                const symptomNames = detectedSymptoms.map(s => s.name).join(', ');
+                addChatMessage(`I've detected the following symptoms: ${symptomNames}. Would you like me to help you find a doctor who specializes in these areas?`, 'ai');
+                
+                // Store detected symptoms
+                selectedSymptoms = detectedSymptoms.map(s => s.id);
+                
+                // Log these symptoms
+                if (currentUser && currentUser.type === 'patient') {
+                    detectedSymptoms.forEach(symptom => {
+                        if (!currentUser.symptoms.some(s => s.id === symptom.id)) {
+                            currentUser.symptoms.push({
+                                id: symptom.id,
+                                name: symptom.name,
+                                severity: 2, // Moderate severity by default
+                                duration: 'days', // Default duration
+                                notes: 'Detected from AI chat',
+                                checkedAt: new Date().toISOString()
+                            });
+                        }
+                    });
+                }
+                
+                // Add button to find doctors
+                const chatMessages = document.getElementById('chatMessages');
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.classList.add('flex', 'space-x-2', 'mb-2');
+                
+                const findDoctorsButton = document.createElement('button');
+                findDoctorsButton.classList.add('bg-blue-600', 'text-white', 'px-4', 'py-2', 'rounded', 'hover:bg-blue-700');
+                findDoctorsButton.textContent = 'Find Doctors';
+                findDoctorsButton.onclick = () => {
+                    document.getElementById('symptomFilter').value = selectedSymptoms[0];
+                    showSection('doctors');
+                    findDoctors();
+                };
+                
+                const logSymptomsButton = document.createElement('button');
+                logSymptomsButton.classList.add('bg-green-600', 'text-white', 'px-4', 'py-2', 'rounded', 'hover:bg-green-700');
+                logSymptomsButton.textContent = 'Log Symptoms';
+                logSymptomsButton.onclick = () => {
+                    alert('Symptoms logged to your health record!');
+                    if (currentUser && currentUser.type === 'patient') {
+                        populatePatientDashboard();
+                    }
+                };
+                
+                buttonsContainer.appendChild(findDoctorsButton);
+                buttonsContainer.appendChild(logSymptomsButton);
+                chatMessages.appendChild(buttonsContainer);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1500);
+        }
+    }
+
+    // Get user location
+    function getUserLocation() {
+        const loader = document.getElementById('locationLoader');
+        loader.classList.remove('hidden');
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    userCoordinates = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    
+                    // For demo purposes, we'll pretend the user is in New York
+                    userCoordinates = {
+                        lat: 40.7150,
+                        lng: -74.0060
+                    };
+                    
+                    document.getElementById('locationFilter').value = 'Current Location (New York, Downtown)';
+                    
+                    // Update patient location if logged in
+                    if (currentUser && currentUser.type === 'patient') {
+                        currentUser.coordinates = userCoordinates;
+                        currentUser.location += ' (Updated via GPS)';
+                    }
+                    
+                    loader.classList.add('hidden');
+                    displayMap();
+                },
+                function(error) {
+                    console.error('Error getting location:', error);
+                    alert('Unable to get your location. Please try again or enter your location manually.');
+                    loader.classList.add('hidden');
+                }
+            );
+        } else {
+            alert('Geolocation is not supported by your browser.');
+            loader.classList.add('hidden');
+        }
+    }
+
+    // Detect location for doctor
+    function detectLocation() {
+        const loader = document.getElementById('detectLocationLoader');
+        loader.classList.remove('hidden');
+        
+        setTimeout(() => {
+            // Simulate detection for demo purposes
+            document.getElementById('locationCity').value = 'Central City';
+            document.getElementById('locationArea').value = 'Downtown';
+            document.getElementById('locationPinCode').value = '10001';
+            loader.classList.add('hidden');
+        }, 1500);
+    }
+
+    // Doctor finder
+    function findDoctors() {
+        const symptomId = document.getElementById('symptomFilter').value;
+        const location = document.getElementById('locationFilter').value;
+        
+        let filteredDoctors = [...doctors];
+        
+        // Filter by symptom if selected
+        if (symptomId) {
+            const symptom = symptoms.find(s => s.id == symptomId);
+            filteredDoctors = filteredDoctors.filter(doctor => {
+                return doctor.specializations.includes(symptom.name);
+            });
+        }
+        
+        // Filter by location if entered
+        if (location) {
+            const lowerLocation = location.toLowerCase();
+            filteredDoctors = filteredDoctors.filter(doctor => {
+                return doctor.location.toLowerCase().includes(lowerLocation) || 
+                       doctor.address.toLowerCase().includes(lowerLocation) ||
+                       doctor.city.toLowerCase().includes(lowerLocation) ||
+                       doctor.area.toLowerCase().includes(lowerLocation);
+            });
+        }
+        
+        // Sort by distance if user coordinates available
+        if (userCoordinates) {
+            filteredDoctors.forEach(doctor => {
+                doctor.distance = calculateDistance(userCoordinates, doctor.coordinates);
+            });
+            
+            filteredDoctors.sort((a, b) => a.distance - b.distance);
+        }
+        
+        displayDoctors(filteredDoctors);
+        displayMap(filteredDoctors);
+    }
+
+    function calculateDistance(coord1, coord2) {
+        // Simple Euclidean distance for demo purposes
+        // In a real app, you would use the Haversine formula or Google Maps Distance Matrix API
+        const latDiff = coord1.lat - coord2.lat;
+        const lngDiff = coord1.lng - coord2.lng;
+        return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) * 100; // Scale up for demo
+    }
+
+    function displayDoctors(doctorsList) {
+        const doctorsContainer = document.getElementById('doctorsList');
+        
+        if (doctorsList.length === 0) {
+            doctorsContainer.innerHTML = '<p class="col-span-full text-center text-gray-500">No doctors found matching your criteria. Please try different filters.</p>';
+            return;
+        }
+        
+        doctorsContainer.innerHTML = doctorsList.map(doctor => `
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex items-center mb-4">
+                    <img src="${doctor.image}" alt="${doctor.name}" class="w-16 h-16 rounded-full object-cover mr-4">
+                    <div>
+                        <h3 class="text-xl font-semibold">${doctor.name}</h3>
+                        <p class="text-gray-600">${doctor.specialty}</p>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div class="flex items-center mb-1">
+                        <span class="${doctor.availability === 'available' ? 'bg-green-100 text-green-800' : doctor.availability === 'busy' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'} px-2 py-1 rounded text-xs">
+                            ${doctor.availability.charAt(0).toUpperCase() + doctor.availability.slice(1)}
+                        </span>
+                        <div class="flex items-center ml-2">
+                            <i class="bi bi-star-fill text-yellow-400 mr-1"></i>
+                            <span>${doctor.rating.toFixed(1)}</span>
+                            <span class="text-gray-500 text-sm ml-1">(${doctor.reviews})</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">${doctor.location}</p>
+                    <p class="text-gray-600 text-sm">${doctor.address}</p>
+                    ${doctor.distance ? `<p class="text-blue-600 text-sm font-medium mt-1">${doctor.distance.toFixed(1)} km away</p>` : ''}
+                </div>
+                <div class="flex flex-wrap gap-1 mb-4">
+                    ${doctor.specializations.map(spec => `
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${spec}</span>
+                    `).join('')}
+                </div>
+                <div class="flex justify-between mt-4">
+                    <button onclick="bookAppointmentWithDoctor(${doctor.id})" class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 ${doctor.availability === 'offline' ? 'opacity-50 cursor-not-allowed' : ''}">
+                        Book Appointment
+                    </button>
+                    <div class="flex space-x-2">
+                        <button onclick="contactDoctor(${doctor.id})" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 ${doctor.availability === 'offline' ? 'opacity-50 cursor-not-allowed' : ''}">
+                            <i class="bi bi-chat-dots"></i>
+                        </button>
+                        <button onclick="leaveFeedback(${doctor.id})" class="bg-gray-100 text-gray-800 px-3 py-1 rounded hover:bg-gray-200">
+                            <i class="bi bi-star"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function displayMap(doctorsList = []) {
+        const mapElement = document.getElementById('doctorsMap');
+        
+        if (!doctorsList || doctorsList.length === 0) {
+            mapElement.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-center">
+                    <i class="bi bi-geo-alt text-4xl text-gray-400 mb-2"></i>
+                    <p class="text-gray-600">Use the filters above to find doctors on the map</p>
+                    <p class="text-gray-500 text-sm">Allow location access for better results</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Simple map visualization
+        mapElement.innerHTML = `
+            <div class="w-full h-full bg-blue-50 relative overflow-hidden">
+                <div class="absolute inset-0 flex items-center justify-center text-gray-400">
+                    <span>Map View</span>
+                </div>
+                ${doctorsList.map((doctor, index) => {
+                    // Calculate position based on coordinates for demo
+                    const left = ((doctor.coordinates.lng + 74) * 100) % 90 + 5;
+                    const top = ((doctor.coordinates.lat - 40) * 100) % 90 + 5;
+                    
+                    return `
+                        <div class="absolute map-marker flex flex-col items-center" style="left: ${left}%; top: ${top}%;" 
+                            onmouseover="showDoctorTooltip('marker${index}')" onmouseout="hideDoctorTooltip('marker${index}')">
+                            <i class="bi bi-geo-alt-fill text-${doctor.availability === 'available' ? 'green' : doctor.availability === 'busy' ? 'yellow' : 'gray'}-600 text-xl"></i>
+                            <div id="marker${index}" class="hidden absolute bottom-6 bg-white p-2 rounded shadow-md w-48 z-10">
+                                <p class="font-medium text-sm">${doctor.name}</p>
+                                <p class="text-xs text-gray-600">${doctor.specialty}</p>
+                                <p class="text-xs text-gray-600">${doctor.distance ? doctor.distance.toFixed(1) + ' km away' : ''}</p>
+                                <div class="flex justify-center mt-1">
+                                    <button onclick="bookAppointmentWithDoctor(${doctor.id})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded hover:bg-blue-700 mr-1">Book</button>
+                                    <button onclick="contactDoctor(${doctor.id})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">Contact</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+                ${userCoordinates ? `
+                    <div class="absolute map-marker" style="left: 50%; top: 50%;">
+                        <div class="relative flex items-center justify-center">
+                            <div class="absolute w-12 h-12 bg-blue-500 bg-opacity-20 rounded-full animate-ping"></div>
+                            <div class="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white"></div>
+                        </div>
+                        <p class="text-xs font-medium text-blue-800 mt-1">You</p>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // Map marker tooltip functions
+    function showDoctorTooltip(markerId) {
+        document.getElementById(markerId).classList.remove('hidden');
+    }
+
+    function hideDoctorTooltip(markerId) {
+        document.getElementById(markerId).classList.add('hidden');
+    }
+
+    // Contact doctor
+    function contactDoctor(doctorId) {
+        if (!currentUser || currentUser.type !== 'patient') {
+            alert('You must be logged in as a patient to contact a doctor.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.id === doctorId);
+        if (!doctor) {
+            alert('Doctor not found.');
+            return;
+        }
+        
+        if (doctor.availability === 'offline') {
+            alert('This doctor is currently offline. Please try again later or book an appointment.');
+            return;
+        }
+        
+        currentDoctorId = doctorId;
+        document.getElementById('communicationDoctorName').textContent = doctor.name + ' (' + doctor.specialty + ')';
+        document.getElementById('communicationMessage').value = '';
+        document.getElementById('communicationModal').classList.remove('hidden');
+    }
+
+    // Start video call
+    function startVideoCall() {
+        const doctor = doctors.find(d => d.id === currentDoctorId);
+        closeModal('communicationModal');
+        
+        // Simulate calling the doctor
+        document.getElementById('videoCallTitle').textContent = `Video Call with ${doctor.name}`;
+        document.getElementById('videoCallModal').classList.remove('hidden');
+        
+        // Add notification for doctor
+        const doctorUser = users.find(u => u.email === doctor.email);
+        if (doctorUser) {
+            // In a real app, this would be sent via WebSocket or similar
+            if (!doctorUser.notifications) doctorUser.notifications = [];
+            doctorUser.notifications.push({
+                id: Date.now(),
+                type: 'video_call',
+                from: currentUser.name,
+                fromId: currentUser.id,
+                message: `${currentUser.name} is starting a video call with you.`,
+                timestamp: new Date().toISOString(),
+                read: false
+            });
+        }
+        
+        // Simulate call connecting
+        setTimeout(() => {
+            if (Math.random() > 0.3) { // 70% chance doctor answers
+                document.querySelector('#videoCallModal .text-center').innerHTML = `
+                    <div class="flex items-center justify-center">
+                        <img src="${doctor.image}" alt="${doctor.name}" class="w-24 h-24 rounded-full object-cover">
+                    </div>
+                    <p class="mt-4">${doctor.name} joined the call</p>
+                    <p class="text-sm text-gray-400 mt-2">This is a simulated call interface</p>
+                `;
+            } else {
+                document.querySelector('#videoCallModal .text-center').innerHTML = `
+                    <div class="mb-4">
+                        <i class="bi bi-telephone-x text-4xl text-red-500"></i>
+                    </div>
+                    <p class="text-red-400">Call not answered</p>
+                    <p class="text-sm text-gray-400 mt-2">The doctor may be with another patient. Please try again later or leave a message.</p>
+                `;
+            }
+        }, 3000);
+    }
+
+    // End video call
+    function endVideoCall() {
+        document.getElementById('videoCallModal').classList.add('hidden');
+    }
+
+    // Toggle mute in video call
+    function toggleMute() {
+        const button = document.getElementById('toggleMuteBtn');
+        const icon = button.querySelector('i');
+        
+        if (icon.classList.contains('bi-mic')) {
+            icon.classList.remove('bi-mic');
+            icon.classList.add('bi-mic-mute');
+            button.classList.add('bg-red-600');
+            button.classList.remove('bg-gray-700');
+        } else {
+            icon.classList.remove('bi-mic-mute');
+            icon.classList.add('bi-mic');
+            button.classList.remove('bg-red-600');
+            button.classList.add('bg-gray-700');
+        }
+    }
+
+    // Toggle video in call
+    function toggleVideo() {
+        const button = document.getElementById('toggleVideoBtn');
+        const icon = button.querySelector('i');
+        
+        if (icon.classList.contains('bi-camera-video')) {
+            icon.classList.remove('bi-camera-video');
+            icon.classList.add('bi-camera-video-off');
+            button.classList.add('bg-red-600');
+            button.classList.remove('bg-gray-700');
+        } else {
+            icon.classList.remove('bi-camera-video-off');
+            icon.classList.add('bi-camera-video');
+            button.classList.remove('bg-red-600');
+            button.classList.add('bg-gray-700');
+        }
+    }
+
+    // Start WhatsApp chat
+    function startWhatsApp() {
+        const doctor = doctors.find(d => d.id === currentDoctorId);
+        
+        // Simulate WhatsApp number
+        const whatsappNumber = '8591667687';
+        const message = encodeURIComponent(`Hello Dr. ${doctor.name.split(' ')[1]}, I'm a patient from HealthCheck and would like to consult regarding my health issue.`);
+        
+        // Open WhatsApp in a new tab
+        window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+        
+        closeModal('communicationModal');
+    }
+
+    // Send direct message
+    function sendDirectMessage() {
+        const message = document.getElementById('communicationMessage').value.trim();
+        if (!message) return;
+        
+        const doctor = doctors.find(d => d.id === currentDoctorId);
+        const doctorUser = users.find(u => u.email === doctor.email);
+        
+        alert(`Message sent to ${doctor.name}. They will respond shortly.`);
+        closeModal('communicationModal');
+        
+        // Add notification for the doctor
+        if (doctorUser) {
+            // In a real app, this would be sent via WebSocket or similar
+            if (!doctorUser.notifications) doctorUser.notifications = [];
+            doctorUser.notifications.push({
+                id: Date.now(),
+                type: 'message',
+                from: currentUser.name,
+                fromId: currentUser.id,
+                message: `New message from ${currentUser.name}: ${message.substring(0, 30)}${message.length > 30 ? '...' : ''}`,
+                timestamp: new Date().toISOString(),
+                read: false
+            });
+            
+            // Add notification for patient
+            addNotification(`Message sent to ${doctor.name}`);
+        }
+    }
+
+    // Booking appointment
+    function bookAppointmentWithDoctor(doctorId) {
+        if (!currentUser || currentUser.type !== 'patient') {
+            alert('You must be logged in as a patient to book an appointment.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.id === doctorId);
+        if (!doctor) {
+            alert('Doctor not found.');
+            return;
+        }
+        
+        if (doctor.availability === 'offline') {
+            alert('This doctor is currently offline and not accepting appointments.');
+            return;
+        }
+        
+        currentDoctorId = doctorId;
+        document.getElementById('appointmentDoctorName').textContent = doctor.name + ' (' + doctor.specialty + ')';
+        document.getElementById('appointmentModal').classList.remove('hidden');
+        
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('appointmentDate').min = today;
+    }
+
+    function bookAppointment() {
+        const date = document.getElementById('appointmentDate').value;
+        const time = document.getElementById('appointmentTime').value;
+        const type = document.getElementById('appointmentType').value;
+        const reason = document.getElementById('appointmentReason').value;
+        
+        if (!date || !time) {
+            alert('Please select a date and time for your appointment.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.id === currentDoctorId);
+        const doctorUser = users.find(u => u.email === doctor.email);
+        
+        // Show loader
+        document.getElementById('appointmentLoader').classList.remove('hidden');
+        
+        setTimeout(() => {
+            // Create appointment request
+            const appointmentRequest = {
+                id: Math.floor(Math.random() * 100000),
+                doctorId: currentDoctorId,
+                doctorName: doctor.name,
+                specialty: doctor.specialty,
+                patientId: currentUser.id,
+                patientName: currentUser.name,
+                date,
+                time,
+                type,
+                reason,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+            
+            // Add to patient's pending requests
+            if (!currentUser.pendingRequests) {
+                currentUser.pendingRequests = [];
+            }
+            currentUser.pendingRequests.push(appointmentRequest);
+            
+            // Add to doctor's pending requests
+            if (doctorUser) {
+                if (!doctorUser.pendingRequests) {
+                    doctorUser.pendingRequests = [];
+                }
+                doctorUser.pendingRequests.push(appointmentRequest);
+            }
+            
+            // Add notification for doctor
+            if (doctorUser) {
+                addNotification(`Appointment request sent to Dr. ${doctor.name.split(' ')[1]}`);
+            }
+            
+            document.getElementById('appointmentLoader').classList.add('hidden');
+            alert('Appointment request sent to the doctor. You will be notified once it is confirmed.');
+            closeModal('appointmentModal');
+            
+            // If on patient dashboard, refresh it
+            if (document.getElementById('patientDashboard').classList.contains('hidden') === false) {
+                populatePatientDashboard();
+            }
+        }, 1500);
+    }
+
+    // Update doctor profile
+    function showProfileModal() {
+        if (!currentUser || currentUser.type !== 'doctor') {
+            alert('You must be logged in as a doctor to update your profile.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        if (doctor) {
+            document.getElementById('updateSpecialty').value = doctor.specialty || '';
+            document.getElementById('updateLocation').value = doctor.location || '';
+            document.getElementById('updateAddress').value = doctor.address || '';
+            document.getElementById('updateBio').value = doctor.bio || '';
+            
+            // Set specializations checkboxes
+            const specializationCheckboxes = document.querySelectorAll('.update-specialization-checkbox');
+            specializationCheckboxes.forEach(checkbox => {
+                checkbox.checked = doctor.specializations.includes(checkbox.value);
+            });
+        }
+        
+        document.getElementById('doctorProfileModal').classList.remove('hidden');
+    }
+
+    function updateDoctorProfile() {
+        const specialty = document.getElementById('updateSpecialty').value;
+        const location = document.getElementById('updateLocation').value;
+        const address = document.getElementById('updateAddress').value;
+        const bio = document.getElementById('updateBio').value;
+        
+        // Get selected specializations
+        const specializationCheckboxes = document.querySelectorAll('.update-specialization-checkbox:checked');
+        const specializations = Array.from(specializationCheckboxes).map(cb => cb.value);
+        
+        // Update doctor in doctors array
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        if (doctor) {
+            doctor.specialty = specialty;
+            doctor.location = location;
+            doctor.address = address;
+            doctor.bio = bio;
+            doctor.specializations = specializations;
+            
+            // Also update in users array
+            const user = users.find(u => u.email === currentUser.email);
+            if (user) {
+                user.specialty = specialty;
+                user.location = location;
+                user.address = address;
+            }
+            
+            alert('Profile updated successfully!');
+            closeModal('doctorProfileModal');
+            populateDoctorDashboard();
+        }
+    }
+
+    // Set doctor location
+    function showLocationModal() {
+        if (!currentUser || currentUser.type !== 'doctor') {
+            alert('You must be logged in as a doctor to set your location.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        if (doctor) {
+            document.getElementById('locationCity').value = doctor.city || '';
+            document.getElementById('locationArea').value = doctor.area || '';
+            document.getElementById('locationPinCode').value = doctor.pinCode || '';
+        }
+        
+        document.getElementById('locationModal').classList.remove('hidden');
+    }
+
+    function saveLocation() {
+        const city = document.getElementById('locationCity').value;
+        const area = document.getElementById('locationArea').value;
+        const pinCode = document.getElementById('locationPinCode').value;
+        
+        if (!city || !area || !pinCode) {
+            alert('Please fill in all location fields.');
+            return;
+        }
+        
+        // Update doctor in doctors array
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        if (doctor) {
+            doctor.city = city;
+            doctor.area = area;
+            doctor.pinCode = pinCode;
+            doctor.address = `${area}, ${city}, ${pinCode}`;
+            
+            // Generate random coordinates for demo purposes
+            doctor.coordinates = generateRandomCoordinates();
+            
+            // Also update in users array
+            const user = users.find(u => u.email === currentUser.email);
+            if (user) {
+                user.city = city;
+                user.area = area;
+                user.pinCode = pinCode;
+                user.address = doctor.address;
+                user.coordinates = doctor.coordinates;
+            }
+            
+            alert('Location updated successfully!');
+            closeModal('locationModal');
+        }
+    }
+
+    // Show log symptom modal
+    function showLogSymptomModal() {
+        if (!currentUser || currentUser.type !== 'patient') {
+            alert('You must be logged in as a patient to log symptoms.');
+            return;
+        }
+        
+        // Reset the form
+        document.getElementById('newSymptomSelect').value = '';
+        document.getElementById('symptomDuration').value = 'days';
+        document.getElementById('symptomNotes').value = '';
+        
+        // Reset severity buttons
+        const severityButtons = document.querySelectorAll('.symptom-severity-btn');
+        severityButtons.forEach(btn => {
+            btn.classList.remove('bg-blue-100', 'border-blue-600', 'text-blue-800');
+        });
+        selectedSymptomSeverity = 0;
+        
+        document.getElementById('logSymptomModal').classList.remove('hidden');
+    }
+
+    function logNewSymptom() {
+        const symptomId = parseInt(document.getElementById('newSymptomSelect').value);
+        const duration = document.getElementById('symptomDuration').value;
+        const notes = document.getElementById('symptomNotes').value;
+        
+        if (!symptomId) {
+            alert('Please select a symptom.');
+            return;
+        }
+        
+        if (selectedSymptomSeverity === 0) {
+            alert('Please select the severity of your symptom.');
+            return;
+        }
+        
+        const symptom = symptoms.find(s => s.id === symptomId);
+        
+        // Add to patient's symptoms
+        if (!currentUser.symptoms) {
+            currentUser.symptoms = [];
+        }
+        
+        // Check if symptom already exists
+        const existingSymptomIndex = currentUser.symptoms.findIndex(s => s.id === symptomId);
+        
+        if (existingSymptomIndex >= 0) {
+            // Update existing symptom
+            currentUser.symptoms[existingSymptomIndex] = {
+                id: symptomId,
+                name: symptom.name,
+                severity: selectedSymptomSeverity,
+                duration,
+                notes,
+                checkedAt: new Date().toISOString()
+            };
+        } else {
+            // Add new symptom
+            currentUser.symptoms.push({
+                id: symptomId,
+                name: symptom.name,
+                severity: selectedSymptomSeverity,
+                duration,
+                notes,
+                checkedAt: new Date().toISOString()
+            });
+        }
+        
+        alert('Symptom logged successfully!');
+        closeModal('logSymptomModal');
+        populatePatientDashboard();
+        
+        // Offer to find doctors
+        if (confirm(`Would you like to find doctors who can help with ${symptom.name}?`)) {
+            selectedSymptoms = [symptomId];
+            showSection('doctors');
+            document.getElementById('symptomFilter').value = symptomId;
+            findDoctors();
+        }
+    }
+
+    // Feedback system
+    function leaveFeedback(doctorId) {
+        if (!currentUser || currentUser.type !== 'patient') {
+            alert('You must be logged in as a patient to leave feedback.');
+            return;
+        }
+        
+        const doctor = doctors.find(d => d.id === doctorId);
+        if (!doctor) {
+            alert('Doctor not found.');
+            return;
+        }
+        
+        currentDoctorId = doctorId;
+        document.getElementById('feedbackDoctorName').textContent = doctor.name + ' (' + doctor.specialty + ')';
+        
+        // Reset star rating
+        const stars = document.querySelectorAll('.bi-star');
+        stars.forEach(star => {
+            star.classList.remove('bi-star-fill');
+            star.classList.add('bi-star');
+            star.classList.remove('text-yellow-400');
+            star.classList.add('text-gray-400');
+        });
+        selectedRating = 0;
+        
+        document.getElementById('feedbackText').value = '';
+        document.getElementById('feedbackModal').classList.remove('hidden');
+    }
+
+    function submitFeedback() {
+        if (selectedRating === 0) {
+            alert('Please select a rating.');
+            return;
+        }
+        
+        const feedback = document.getElementById('feedbackText').value;
+        const doctor = doctors.find(d => d.id === currentDoctorId);
+        
+        // In a real app, this would be sent to a server
+        // For this demo, we'll update the doctor's rating
+        const totalRating = doctor.rating * doctor.reviews;
+        doctor.reviews++;
+        doctor.rating = (totalRating + selectedRating) / doctor.reviews;
+        
+        // Add notification for the doctor
+        const doctorUser = users.find(u => u.email === doctor.email);
+        if (doctorUser) {
+            addNotification(`You left a ${selectedRating}-star review for ${doctor.name}`);
+        }
+        
+        alert('Thank you for your feedback!');
+        closeModal('feedbackModal');
+    }
+
+    // Emergency functionality
+    function showEmergencyModal() {
+        document.getElementById('emergencyModal').classList.remove('hidden');
+        
+        // Animate progress bar
+        const progressBar = document.getElementById('emergencyProgressBar');
+        let width = 0;
+        const interval = setInterval(() => {
+            if (width >= 100) {
+                clearInterval(interval);
+            } else {
+                width += 2;
+                progressBar.style.width = width + '%';
+            }
+        }, 100);
+    }
+
+    function sendEmergencyDetails() {
+        const details = document.getElementById('emergencyDetails').value;
+        
+        // In a real app, this would send the emergency alert to a backend
+        alert('Emergency alert sent successfully. Medical services have been notified.');
+        
+        // Increment emergency alert count in admin dashboard
+        const alertCounter = document.getElementById('emergencyAlerts');
+        if (alertCounter) {
+            alertCounter.textContent = (parseInt(alertCounter.textContent) + 1).toString();
+        }
+        
+        // Notify available doctors
+        doctors.forEach(doctor => {
+            if (doctor.availability === 'available') {
+                const doctorUser = users.find(u => u.email === doctor.email);
+                if (doctorUser) {
+                    // In a real app, this would be sent via WebSocket
+                    if (!doctorUser.notifications) doctorUser.notifications = [];
+                    doctorUser.notifications.push({
+                        id: Date.now(),
+                        type: 'emergency',
+                        from: currentUser ? currentUser.name : 'Anonymous',
+                        message: `EMERGENCY: ${currentUser ? currentUser.name : 'A patient'} needs urgent assistance. ${details ? 'Details: ' + details : ''}`,
+                        timestamp: new Date().toISOString(),
+                        read: false
+                    });
+                }
+            }
+        });
+        
+        // Add notification for the user
+        if (currentUser) {
+            addNotification('Emergency alert sent to nearby medical services', true);
+        }
+        
+        closeModal('emergencyModal');
+    }
+
+    // Dashboard functions
+    function populatePatientDashboard() {
+        // Update appointment count
+        const appointmentCount = document.getElementById('appointmentCount');
+        const appointments = currentUser.appointments || [];
+        appointmentCount.textContent = appointments.length;
+        
+        // Update pending requests count
+        const pendingRequestsCount = document.getElementById('pendingRequestsCount');
+        const pendingRequests = currentUser.pendingRequests || [];
+        pendingRequestsCount.textContent = pendingRequests.length;
+        
+        // Populate appointments
+        const appointmentsContainer = document.getElementById('patientAppointments');
+        if (appointments.length > 0) {
+            appointmentsContainer.innerHTML = appointments.map(appointment => `
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-medium">${appointment.doctorName}</p>
+                    <p class="text-sm text-gray-600">${appointment.specialty}</p>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm">${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${appointment.type}</span>
+                    </div>
+                    <div class="flex justify-between mt-3">
+                        <button onclick="contactDoctor(${appointment.doctorId})" class="text-sm bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700">
+                            <i class="bi bi-chat-dots"></i> Contact
+                        </button>
+                        <button onclick="cancelAppointment(${appointment.id})" class="text-sm text-red-600 hover:text-red-800">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            appointmentsContainer.innerHTML = '<p class="text-gray-500 italic">No upcoming appointments</p>';
+        }
+        
+        // Populate pending requests
+        const pendingRequestsContainer = document.getElementById('patientPendingRequests');
+        if (pendingRequests.length > 0) {
+            pendingRequestsContainer.innerHTML = pendingRequests.map(request => `
+                <div class="bg-yellow-50 p-3 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <p class="font-medium">${request.doctorName}</p>
+                        <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Pending</span>
+                    </div>
+                    <p class="text-sm text-gray-600">${request.specialty}</p>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm">${new Date(request.date).toLocaleDateString()} at ${request.time}</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${request.type}</span>
+                    </div>
+                    <p class="text-sm text-gray-500 italic mt-2">Awaiting doctor's confirmation</p>
+                    <div class="flex justify-end mt-3">
+                        <button onclick="cancelRequest(${request.id})" class="text-sm text-red-600 hover:text-red-800">
+                            Cancel Request
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            pendingRequestsContainer.innerHTML = '<p class="text-gray-500 italic">No pending requests</p>';
+        }
+        
+        // Populate symptoms
+        const symptomsContainer = document.getElementById('patientSymptoms');
+        if (currentUser.symptoms && currentUser.symptoms.length > 0) {
+            symptomsContainer.innerHTML = currentUser.symptoms.map(symptom => `
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <p class="font-medium">${symptom.name}</p>
+                        <span class="bg-${symptom.severity === 1 ? 'green' : symptom.severity === 2 ? 'yellow' : 'red'}-100 text-${symptom.severity === 1 ? 'green' : symptom.severity === 2 ? 'yellow' : 'red'}-800 px-2 py-1 rounded-full text-xs">
+                            ${symptom.severity === 1 ? 'Mild' : symptom.severity === 2 ? 'Moderate' : 'Severe'}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500">Duration: ${symptom.duration}</p>
+                    ${symptom.notes ? `<p class="text-xs text-gray-600 mt-1">"${symptom.notes}"</p>` : ''}
+                    <p class="text-xs text-gray-500 mt-1">Logged on ${new Date(symptom.checkedAt).toLocaleString()}</p>
+                    <div class="flex justify-between mt-3">
+                        <button onclick="findDoctorsForSymptom(${symptom.id})" class="text-blue-600 hover:text-blue-800 text-sm">
+                            Find Doctors
+                        </button>
+                        <button onclick="updateSymptom(${symptom.id})" class="text-green-600 hover:text-green-800 text-sm">
+                            Update
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            symptomsContainer.innerHTML = '<p class="text-gray-500 italic">No recent symptoms logged</p>';
+        }
+        
+        // Populate doctors section with some sample doctors
+        const doctorsContainer = document.getElementById('patientDoctors');
+        const doctorsToShow = [];
+        
+        // Add doctors from appointments
+        appointments.forEach(appointment => {
+            const doctor = doctors.find(d => d.id === appointment.doctorId);
+            if (doctor && !doctorsToShow.some(d => d.id === doctor.id)) {
+                doctorsToShow.push(doctor);
+            }
+        });
+        
+        // Add doctors from pending requests
+        pendingRequests.forEach(request => {
+            const doctor = doctors.find(d => d.id === request.doctorId);
+            if (doctor && !doctorsToShow.some(d => d.id === doctor.id)) {
+                doctorsToShow.push(doctor);
+            }
+        });
+        
+        // Add more doctors if needed
+        if (doctorsToShow.length < 3) {
+            doctors.forEach(doctor => {
+                if (doctor.availability !== 'offline' && !doctorsToShow.some(d => d.id === doctor.id) && doctorsToShow.length < 3) {
+                    doctorsToShow.push(doctor);
+                }
+            });
+        }
+        
+        if (doctorsToShow.length > 0) {
+            doctorsContainer.innerHTML = doctorsToShow.map(doctor => `
+                <div class="bg-white border p-4 rounded-lg">
+                    <div class="flex items-center mb-3">
+                        <img src="${doctor.image}" alt="${doctor.name}" class="w-12 h-12 rounded-full object-cover mr-3">
+                        <div>
+                            <h4 class="font-semibold">${doctor.name}</h4>
+                            <p class="text-sm text-gray-600">${doctor.specialty}</p>
+                            <div class="flex items-center">
+                                <span class="status-indicator ${doctor.availability === 'available' ? 'bg-green-500' : doctor.availability === 'busy' ? 'bg-yellow-500' : 'bg-gray-500'}"></span>
+                                <span class="text-xs text-gray-500">${doctor.availability.charAt(0).toUpperCase() + doctor.availability.slice(1)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            <i class="bi bi-star-fill text-yellow-400 mr-1"></i>
+                            <span>${doctor.rating.toFixed(1)}</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="contactDoctor(${doctor.id})" class="text-green-600 hover:text-green-800 text-sm">
+                                <i class="bi bi-chat-dots"></i>
+                            </button>
+                            <button onclick="bookAppointmentWithDoctor(${doctor.id})" class="text-blue-600 hover:text-blue-800 text-sm">
+                                Book
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            doctorsContainer.innerHTML = '<p class="col-span-full text-gray-500 italic">No doctors found. Try finding doctors based on your symptoms.</p>';
+        }
+    }
+
+    function populateDoctorDashboard() {
+        // Set status dropdown to current value
+        const doctorUser = users.find(u => u.email === currentUser.email);
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        
+        if (doctor) {
+            document.getElementById('doctorStatusSelect').value = doctor.availability;
+            updateStatusIndicator(doctor.availability);
+        }
+        
+        // Update appointment count
+        const appointmentCount = document.getElementById('doctorAppointmentCount');
+        const appointments = currentUser.appointments || [];
+        appointmentCount.textContent = appointments.length;
+        
+        // Update patient request count
+        const requestCount = document.getElementById('patientRequestCount');
+        const pendingRequests = currentUser.pendingRequests || [];
+        requestCount.textContent = pendingRequests.length;
+        
+        // Populate appointments
+        const appointmentsContainer = document.getElementById('doctorAppointments');
+        if (appointments.length > 0) {
+            appointmentsContainer.innerHTML = appointments.map(appointment => `
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-medium">${appointment.patientName}</p>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm">${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${appointment.type}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">Reason: ${appointment.reason || 'Not specified'}</p>
+                    <div class="flex justify-between mt-3">
+                        <button onclick="viewPatientDetails(${appointment.patientId})" class="text-blue-600 hover:text-blue-800 text-sm">
+                            View Details
+                        </button>
+                        <button onclick="cancelAppointmentDoctor(${appointment.id})" class="text-sm text-red-600 hover:text-red-800">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            appointmentsContainer.innerHTML = '<p class="text-gray-500 italic">No appointments scheduled</p>';
+        }
+        
+        // Populate patient requests
+        const requestsContainer = document.getElementById('patientRequests');
+        if (pendingRequests.length > 0) {
+            requestsContainer.innerHTML = pendingRequests.map(request => `
+                <div class="bg-red-50 p-3 rounded-lg">
+                    <div class="flex justify-between items-center">
+                        <p class="font-medium">${request.patientName}</p>
+                        <span class="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">New</span>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm">${new Date(request.date).toLocaleDateString()} at ${request.time}</span>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">${request.type}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-1">Reason: ${request.reason || 'Not specified'}</p>
+                    <div class="flex justify-between mt-3">
+                        <button onclick="acceptRequest(${request.id})" class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">
+                            Accept
+                        </button>
+                        <button onclick="declineRequest(${request.id})" class="bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400 text-sm">
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            requestsContainer.innerHTML = '<p class="text-gray-500 italic">No new patient requests</p>';
+        }
+        
+        // Populate patients section (sample data + any real patients)
+        const patientsContainer = document.getElementById('doctorPatients');
+        
+        // Get patients who have appointments with this doctor
+        const patientIds = new Set();
+        appointments.forEach(a => patientIds.add(a.patientId));
+        pendingRequests.forEach(r => patientIds.add(r.patientId));
+        
+        const patientsList = Array.from(patientIds).map(id => {
+            const patient = users.find(u => u.id === id && u.type === 'patient');
+            if (patient) {
+                return {
+                    id: patient.id,
+                    name: patient.name,
+                    lastVisit: appointments.filter(a => a.patientId === patient.id)
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))[0]?.date || null,
+                    symptoms: patient.symptoms || []
+                };
+            }
+            return null;
+        }).filter(Boolean);
+        
+        // Add sample patients if needed
+        if (patientsList.length < 3) {
+            patientsList.push(
+                {
+                    id: 999,
+                    name: "John Smith",
+                    lastVisit: new Date().toISOString(),
+                    symptoms: symptoms.slice(0, 2).map(s => ({ id: s.id, name: s.name }))
+                },
+                {
+                    id: 998,
+                    name: "Jane Doe",
+                    lastVisit: new Date(Date.now() - 86400000).toISOString(),
+                    symptoms: symptoms.slice(2, 4).map(s => ({ id: s.id, name: s.name }))
+                }
+            );
+        }
+        
+        patientsContainer.innerHTML = patientsList.map(patient => `
+            <div class="bg-white border p-4 rounded-lg">
+                <h4 class="font-semibold">${patient.name}</h4>
+                <p class="text-sm text-gray-600 mb-2">
+                    ${patient.lastVisit ? `Last visit: ${new Date(patient.lastVisit).toLocaleDateString()}` : 'No previous visits'}
+                </p>
+                <p class="text-xs text-gray-500">
+                    ${patient.symptoms.length > 0 
+                        ? `Symptoms: ${patient.symptoms.map(s => s.name).join(', ')}` 
+                        : 'No symptoms recorded'}
+                </p>
+                <div class="flex justify-between mt-3">
+                    <button onclick="viewPatientDetails(${patient.id})" class="text-blue-600 hover:text-blue-800 text-sm">
+                        View Records
+                    </button>
+                    <button onclick="contactPatient(${patient.id})" class="text-green-600 hover:text-green-800 text-sm">
+                        <i class="bi bi-chat-dots"></i> Contact
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function populateAdminDashboard() {
+        // Update statistics
+        document.getElementById('totalUsers').textContent = users.length;
+        document.getElementById('activeDoctors').textContent = doctors.filter(d => d.availability === 'available').length;
+        document.getElementById('emergencyAlerts').textContent = '2';
+    }
+
+    // Accept patient request
+    function acceptRequest(requestId) {
+        const requestIndex = currentUser.pendingRequests.findIndex(request => request.id === requestId);
+        
+        if (requestIndex === -1) {
+            alert('Request not found.');
+            return;
+        }
+        
+        const request = currentUser.pendingRequests[requestIndex];
+        
+        // Create new appointment from the request
+        const appointment = {
+            ...request,
+            status: 'confirmed'
+        };
+        
+        // Add to doctor's appointments
+        if (!currentUser.appointments) {
+            currentUser.appointments = [];
+        }
+        currentUser.appointments.push(appointment);
+        
+        // Remove from doctor's pending requests
+        currentUser.pendingRequests.splice(requestIndex, 1);
+        
+        // Update patient's records
+        const patient = users.find(u => u.id === request.patientId);
+        if (patient) {
+            // Remove from patient's pending requests
+            const patientRequestIndex = patient.pendingRequests.findIndex(r => r.id === requestId);
+            if (patientRequestIndex !== -1) {
+                patient.pendingRequests.splice(patientRequestIndex, 1);
+            }
+            
+            // Add to patient's appointments
+            if (!patient.appointments) {
+                patient.appointments = [];
+            }
+            patient.appointments.push(appointment);
+            
+            // Notify patient
+            // In a real app, this would be sent via WebSocket or similar
+            addNotification(`Request accepted: ${patient.name} for ${new Date(request.date).toLocaleDateString()} at ${request.time}`);
+            
+            // Update dashboards
+            populateDoctorDashboard();
+        } else {
+            alert('Patient not found in the system.');
+        }
+    }
+
+    // Decline patient request
+    function declineRequest(requestId) {
+        const requestIndex = currentUser.pendingRequests.findIndex(request => request.id === requestId);
+        
+        if (requestIndex === -1) {
+            alert('Request not found.');
+            return;
+        }
+        
+        const request = currentUser.pendingRequests[requestIndex];
+        
+        // Remove from doctor's pending requests
+        currentUser.pendingRequests.splice(requestIndex, 1);
+        
+        // Update patient's records
+        const patient = users.find(u => u.id === request.patientId);
+        if (patient) {
+            // Remove from patient's pending requests
+            const patientRequestIndex = patient.pendingRequests.findIndex(r => r.id === requestId);
+            if (patientRequestIndex !== -1) {
+                patient.pendingRequests.splice(patientRequestIndex, 1);
+            }
+            
+            // Add notification for the patient
+            // In a real app, this would be sent via WebSocket or similar
+            addNotification(`Request declined for ${new Date(request.date).toLocaleDateString()} at ${request.time}`);
+            
+            alert(`Request from ${patient.name} has been declined.`);
+            
+            // Update dashboard
+            populateDoctorDashboard();
+        } else {
+            alert('Patient not found in the system.');
+        }
+    }
+
+    // Cancel request (patient side)
+    function cancelRequest(requestId) {
+        const requestIndex = currentUser.pendingRequests.findIndex(request => request.id === requestId);
+        
+        if (requestIndex === -1) {
+            alert('Request not found.');
+            return;
+        }
+        
+        const request = currentUser.pendingRequests[requestIndex];
+        
+        // Remove from patient's pending requests
+        currentUser.pendingRequests.splice(requestIndex, 1);
+        
+        // Update doctor's records
+        const doctorUser = users.find(u => u.email === doctors.find(d => d.id === request.doctorId).email);
+        if (doctorUser) {
+            // Remove from doctor's pending requests
+            const doctorRequestIndex = doctorUser.pendingRequests.findIndex(r => r.id === requestId);
+            if (doctorRequestIndex !== -1) {
+                doctorUser.pendingRequests.splice(doctorRequestIndex, 1);
+            }
+            
+            alert('Appointment request cancelled successfully.');
+            
+            // Update dashboard
+            populatePatientDashboard();
+        } else {
+            alert('Doctor not found in the system.');
+        }
+    }
+
+    // Cancel appointment (patient side)
+    function cancelAppointment(appointmentId) {
+        const appointmentIndex = currentUser.appointments.findIndex(appointment => appointment.id === appointmentId);
+        
+        if (appointmentIndex === -1) {
+            alert('Appointment not found.');
+            return;
+        }
+        
+        const appointment = currentUser.appointments[appointmentIndex];
+        
+        // Remove from patient's appointments
+        currentUser.appointments.splice(appointmentIndex, 1);
+        
+        // Update doctor's records
+        const doctorUser = users.find(u => u.email === doctors.find(d => d.id === appointment.doctorId).email);
+        if (doctorUser) {
+            // Remove from doctor's appointments
+            const doctorAppointmentIndex = doctorUser.appointments.findIndex(a => a.id === appointmentId);
+            if (doctorAppointmentIndex !== -1) {
+                doctorUser.appointments.splice(doctorAppointmentIndex, 1);
+            }
+            
+            alert('Appointment cancelled successfully.');
+            
+            // Notify doctor
+            addNotification(`Appointment cancelled for ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}`);
+            
+            // Update dashboard
+            populatePatientDashboard();
+        } else {
+            alert('Doctor not found in the system.');
+        }
+    }
+
+    // Cancel appointment (doctor side)
+    function cancelAppointmentDoctor(appointmentId) {
+        const appointmentIndex = currentUser.appointments.findIndex(appointment => appointment.id === appointmentId);
+        
+        if (appointmentIndex === -1) {
+            alert('Appointment not found.');
+            return;
+        }
+        
+        const appointment = currentUser.appointments[appointmentIndex];
+        
+        // Remove from doctor's appointments
+        currentUser.appointments.splice(appointmentIndex, 1);
+        
+        // Update patient's records
+        const patient = users.find(u => u.id === appointment.patientId);
+        if (patient) {
+            // Remove from patient's appointments
+            const patientAppointmentIndex = patient.appointments.findIndex(a => a.id === appointmentId);
+            if (patientAppointmentIndex !== -1) {
+                patient.appointments.splice(patientAppointmentIndex, 1);
+            }
+            
+            alert('Appointment cancelled successfully.');
+            
+            // Notify patient
+            addNotification(`Appointment cancelled by ${appointment.doctorName} for ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}`);
+            
+            // Update dashboard
+            populateDoctorDashboard();
+        } else {
+            alert('Patient not found in the system.');
+        }
+    }
+
+    // Contact patient (doctor side)
+    function contactPatient(patientId) {
+        const patient = users.find(u => u.id === patientId);
+        if (!patient) {
+            alert('Patient not found.');
+            return;
+        }
+        
+        alert(`Contacting patient: ${patient.name}\n\nIn a complete implementation, this would open a communication channel with the patient.`);
+    }
+
+    // View patient details (doctor side)
+    function viewPatientDetails(patientId) {
+        const patient = users.find(u => u.id === patientId);
+        if (!patient) {
+            alert('Patient not found.');
+            return;
+        }
+        
+        // Get patient symptoms
+        const patientSymptoms = patient.symptoms || [];
+        const symptomsList = patientSymptoms.map(s => `• ${s.name} (Severity: ${s.severity === 1 ? 'Mild' : s.severity === 2 ? 'Moderate' : 'Severe'}, Duration: ${s.duration})`).join('\n');
+        
+        // Get patient appointments with this doctor
+        const appointments = patient.appointments?.filter(a => a.doctorId === doctors.find(d => d.email === currentUser.email)?.id) || [];
+        const appointmentsList = appointments.length > 0 
+            ? appointments.map(a => `• ${new Date(a.date).toLocaleDateString()} at ${a.time}`).join('\n')
+            : 'No appointments scheduled';
+        
+        alert(`Patient Details: ${patient.name}
+        
+Location: ${patient.location || 'Not specified'}
+        
+Symptoms:
+${patientSymptoms.length > 0 ? symptomsList : 'No symptoms recorded'}
+        
+Appointments:
+${appointmentsList}
+
+In a complete implementation, this would show a detailed patient record.`);
+    }
+
+    // Update doctor status
+    function updateDoctorStatus(status) {
+        const doctorUser = users.find(u => u.email === currentUser.email);
+        const doctor = doctors.find(d => d.email === currentUser.email);
+        
+        if (doctor) {
+            doctor.availability = status;
+        }
+        if (doctorUser) {
+            doctorUser.availability = status;
+        }
+        
+        updateStatusIndicator(status);
+        addNotification(`Your status has been updated to: ${status}`);
+    }
+
+    function updateStatusIndicator(status) {
+        const indicator = document.getElementById('statusIndicator');
+        
+        if (status === 'available') {
+            indicator.classList.remove('bg-yellow-500', 'bg-gray-500');
+            indicator.classList.add('bg-green-500');
+        } else if (status === 'busy') {
+            indicator.classList.remove('bg-green-500', 'bg-gray-500');
+            indicator.classList.add('bg-yellow-500');
+        } else {
+            indicator.classList.remove('bg-green-500', 'bg-yellow-500');
+            indicator.classList.add('bg-gray-500');
+        }
+    }
+
+    // Find doctors for a specific symptom
+    function findDoctorsForSymptom(symptomId) {
+        document.getElementById('symptomFilter').value = symptomId;
+        showSection('doctors');
+        findDoctors();
+    }
+
+    // Update a symptom's details
+    function updateSymptom(symptomId) {
+        const symptomIndex = currentUser.symptoms.findIndex(s => s.id === symptomId);
+        if (symptomIndex === -1) {
+            alert('Symptom not found.');
+            return;
+        }
+        
+        const symptom = currentUser.symptoms[symptomIndex];
+        
+        // Set values in the log symptom modal
+        document.getElementById('newSymptomSelect').value = symptom.id;
+        document.getElementById('symptomDuration').value = symptom.duration || 'days';
+        document.getElementById('symptomNotes').value = symptom.notes || '';
+        
+        // Set severity buttons
+        const severityButtons = document.querySelectorAll('.symptom-severity-btn');
+        selectedSymptomSeverity = symptom.severity || 0;
+        severityButtons.forEach((btn, i) => {
+            btn.classList.remove('bg-blue-100', 'border-blue-600', 'text-blue-800');
+            if (i + 1 === selectedSymptomSeverity) {
+                btn.classList.add('bg-blue-100', 'border-blue-600', 'text-blue-800');
+            }
+        });
+        
+        document.getElementById('logSymptomModal').classList.remove('hidden');
+    }
+</script>
+
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
